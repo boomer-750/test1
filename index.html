@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1113">
+<title>Тренировка</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0F1113; --card:#171A1E; --card2:#1F2329; --line:#2A2F36; --line2:#3A414A;
+  --text:#F2F4F5; --soft:#D5DADF; --mute:#9AA3AC; --acc:#C6F24E; --acc2:#7E9B2A; --warn:#F5B94A; --bad:#FF7A6B;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:'Manrope',system-ui,-apple-system,'Segoe UI',sans-serif}
+body{min-height:100vh;color-scheme:dark}
+button,input,select{font-family:inherit;color:inherit}
+button{cursor:pointer}
+#app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+.screen{flex:1;padding:20px 16px 96px;display:flex;flex-direction:column}
+h1{margin:0;font-size:22px;line-height:1.2;font-weight:800;letter-spacing:-.01em}
+.sub{font-size:13px;color:var(--mute);margin-top:6px}
+.row{display:flex;align-items:center}
+.sp{flex:1}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-top:10px}
+.pill{display:inline-flex;align-items:center;padding:4px 10px;border-radius:999px;border:1px solid var(--acc);color:var(--acc);font-size:12px;font-weight:700}
+.pill.mute{border:0;background:var(--card2);color:var(--mute)}
+.bars{display:flex;gap:6px;margin-top:10px}
+.bars i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.bars i.d{background:var(--acc2)} .bars i.c{background:var(--acc)}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.item{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 14px;background:var(--card);border:0;border-radius:14px;text-align:left;width:100%}
+.num{width:30px;height:30px;border-radius:10px;background:var(--card2);color:var(--mute);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex:none}
+.item .t{font-size:14px;font-weight:700;line-height:1.25}
+.item .s{margin-top:2px;font-size:12px;color:var(--mute)}
+.item .r{text-align:right;flex:none}
+.item .r b{font-size:14px} .item .r span{display:block;margin-top:2px;font-size:11px;color:var(--mute)}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;height:56px;border:0;border-radius:16px;background:var(--acc);color:#0F1113;font-size:16px;font-weight:800}
+.btn:disabled{opacity:.45}
+.btn.line{background:transparent;border:1px solid var(--line2);color:var(--text);height:48px;font-size:15px;font-weight:700;border-radius:14px}
+.btn.small{height:44px;font-size:14px;border-radius:12px}
+.ghost{background:none;border:0;color:var(--mute);font-size:13px;font-weight:700;padding:10px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--bg);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.nav div{max-width:480px;margin:0 auto;height:68px;display:flex;justify-content:space-around;align-items:center;padding:0 8px}
+.nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--mute);font-size:11px;font-weight:700;min-width:64px;min-height:48px}
+.nav button.on{color:var(--acc)}
+.top{display:flex;align-items:center;justify-content:space-between;height:44px;margin:-4px -8px 0}
+.icon{width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:none;border:0;color:var(--text)}
+.set{display:flex;align-items:center;gap:12px;height:44px;padding:0 14px;background:var(--card);border-radius:12px;font-size:14px;font-weight:700}
+.set .v{margin-left:auto;color:var(--mute);font-weight:500}
+.set.todo{background:none;border:1px dashed var(--line2);color:var(--mute)}
+.tick{width:22px;height:22px;border-radius:11px;background:var(--acc);color:#0F1113;display:flex;align-items:center;justify-content:center;flex:none}
+.circ{width:22px;height:22px;border-radius:11px;border:2px solid var(--line2);flex:none}
+.now{padding:14px;background:var(--card2);border:1px solid var(--acc);border-radius:16px}
+.now .h{display:flex;justify-content:space-between;align-items:center}
+.now .h b{font-size:14px;font-weight:800;color:var(--acc)} .now .h span{font-size:12px;color:var(--mute)}
+.steps{display:flex;gap:12px;margin-top:12px}
+.steps>div{flex:1}
+.steps label{font-size:12px;color:var(--mute);display:block}
+.stp{margin-top:6px;display:flex;align-items:center;justify-content:space-between}
+.stp button{width:44px;height:44px;border:0;border-radius:12px;background:var(--line);font-size:22px;font-weight:700;line-height:1}
+.stp input{width:64px;text-align:center;background:none;border:0;font-size:26px;font-weight:800;padding:0;min-width:0}
+.stp input:focus{outline:2px solid var(--acc2);border-radius:8px}
+.field{width:100%;height:48px;padding:0 14px;border-radius:14px;border:1px solid var(--line);background:var(--card);font-size:14px}
+.field::placeholder{color:var(--mute)}
+.toast{margin-top:12px;padding:12px 14px;background:var(--card2);border-radius:14px;font-size:13px;line-height:1.45;color:var(--soft)}
+.toast.err{color:var(--bad)}
+.opt{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card);text-align:left;margin-top:8px}
+.opt.on{border-color:var(--acc);background:var(--card2)}
+.opt b{display:block;font-size:16px;font-weight:800} .opt small{display:block;margin-top:2px;font-size:12px;color:var(--mute)}
+.opt em{font-style:normal;font-size:13px;font-weight:800;color:var(--mute)} .opt.on em{color:var(--acc)}
+.seg{display:flex;gap:6px;margin-top:14px}
+.seg button{flex:1;height:40px;border:0;border-radius:12px;background:var(--card2);color:var(--mute);font-size:13px;font-weight:700}
+.seg button.on{background:var(--acc);color:#0F1113;font-weight:800}
+.big{font-size:30px;font-weight:800}
+.good{color:var(--acc);font-size:13px;font-weight:700}
+.vol{display:flex;align-items:center;gap:10px;margin-top:12px}
+.vol span{font-size:13px;font-weight:700}.vol .n{width:72px}.vol .c{width:22px;text-align:right;font-weight:800}
+.vol .tr{flex:1;height:10px;border-radius:5px;background:var(--card2);position:relative}
+.vol .tr i{position:absolute;left:0;top:0;height:10px;border-radius:5px;background:var(--acc)}
+.vol .tr u{position:absolute;left:0;top:0;height:10px;border-right:2px solid var(--mute);background:none;text-decoration:none}
+.st{margin-top:10px;display:flex;gap:12px}
+.dot{width:10px;height:10px;border-radius:5px;background:var(--warn);margin-top:5px;flex:none}
+select.field{appearance:none;background-image:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chat{display:flex;flex-direction:column;gap:12px;margin-top:16px;flex:1}
+.me{align-self:flex-end;max-width:85%;background:var(--card2);padding:12px 14px;border-radius:16px 16px 4px 16px;font-size:14px;line-height:1.4}
+.ai{align-self:flex-start;max-width:92%;background:var(--card);padding:12px 14px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.5;white-space:pre-wrap}
+.sug{background:var(--card2);border:0;border-radius:999px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--soft)}
+.sticky{position:sticky;bottom:80px;background:var(--bg);padding-top:10px;display:flex;gap:8px}
+.step-n{width:20px;height:20px;border-radius:10px;background:var(--line);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:none}
+.ol{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.ol div{display:flex;gap:10px;font-size:13px;line-height:1.45;color:var(--soft)}
+.two{display:flex;gap:10px}.two>div{flex:1}
+.video{margin-top:4px;height:150px;border-radius:16px;background:var(--card2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--mute);font-size:13px;font-weight:700;border:0;width:100%}
+.video i{width:56px;height:56px;border-radius:28px;background:var(--acc);color:#0F1113;display:flex;align-items:center;justify-content:center}
+.hist-h{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;text-align:left;padding:0}
+.hist-x{margin-top:10px;display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--soft)}
+.hist-x b{display:block;font-weight:700;color:var(--text)}
+.muted{color:var(--mute)}
+.center{text-align:center;color:var(--mute);margin:auto;padding:40px 0;font-size:14px;line-height:1.5}
+@media (prefers-reduced-motion:no-preference){.screen{animation:in .18s ease-out}@keyframes in{from{opacity:.4;transform:translateY(4px)}}}
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<script>
+'use strict';
+// ====== Настройка: адрес вебхука n8n (workflow fit-api, путь /fit-api) ======
+const DEFAULT_API = 'https://webpowerai.ru/webhook/fit-api';
+// ===========================================================================
+const tg = window.Telegram && window.Telegram.WebApp;
+const initData = (tg && tg.initData) || '';
+// Подмену адреса разрешаем только вне Telegram (для проверки страницы): подписанные данные при этом не уходят никуда.
+const API = (!initData && new URLSearchParams(location.search).get('api')) || DEFAULT_API;
+if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor('#0F1113'); tg.setBackgroundColor('#0F1113'); } catch (e) {} }
+
+const MUSCLE = { chest: 'Грудь', back: 'Спина', legs: 'Ноги', delts: 'Дельты', biceps: 'Бицепс', triceps: 'Трицепс', abs: 'Пресс' };
+const KIND = { warmup: 'Разминка', lead: 'Подводящий', working: 'Рабочий', drop: 'Дроп', rest_pause: 'Отдых-пауза', pyramid_step: 'Ступень' };
+const SIDE = { left: ', левая', right: ', правая', both: '' };
+const fmt = (n) => (n == null || n === '' ? '—' : String(Math.round(Number(n) * 100) / 100).replace('.', ','));
+const num = (v) => { const x = Number(String(v).replace(',', '.')); return Number.isFinite(x) ? x : NaN; };
+
+const ICON = {
+  back: '<path d="M15 5l-7 7 7 7"/>', info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  cal: '<rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+  chart: '<path d="M4 19h16M7 15l3-4 3 2 4-6"/>', chat: '<path d="M5 6h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1h-7l-4 3v-3H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z"/>',
+  list: '<path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/>', check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  play: '<path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor" stroke="none"/>',
+};
+function icon(name, size = 22, sw = 1.8) {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('width', size); s.setAttribute('height', size); s.setAttribute('viewBox', '0 0 24 24');
+  s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', sw);
+  s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.setAttribute('aria-hidden', 'true');
+  s.innerHTML = ICON[name]; return s;
+}
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') e.className = v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k === 'text') e.textContent = v; else e.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+}
+
+// ---------- API ----------
+async function call(action, extra) {
+  const body = new URLSearchParams({ initData, action, ...(extra || {}) });
+  let res;
+  try { res = await fetch(`${API}`, { method: 'POST', body }); }       // простой запрос, без preflight
+  catch (e) { throw new Error('Не удалось связаться с сервером'); }
+  let j; try { j = await res.json(); } catch (e) { throw new Error('Сервер ответил не в том формате'); }
+  if (res.status === 401 || j.error === 'forbidden') throw new Error('Нет доступа');
+  return j;
+}
+
+// ---------- состояние ----------
+const S = { tab: 'today', screen: null, stack: [], cache: {}, seg: 'ex', msg: null, feelPick: null, chat: [], busy: false };
+const app = document.getElementById('app');
+function go(screen, extra) { S.stack.push({ tab: S.tab, screen: S.screen, ex: S.exId }); S.screen = screen; Object.assign(S, extra || {}); render(); window.scrollTo(0, 0); }
+function back() { const p = S.stack.pop(); if (p) { S.tab = p.tab; S.screen = p.screen; } else S.screen = null; render(); window.scrollTo(0, 0); }
+function setTab(t) { S.tab = t; S.screen = null; S.stack = []; S.msg = null; render(); window.scrollTo(0, 0); }
+function haptic(kind) { try { tg && tg.HapticFeedback && tg.HapticFeedback.notificationOccurred(kind); } catch (e) {} }
+
+async function render() {
+  app.replaceChildren(h('div', { class: 'screen' }, h('div', { class: 'center' }, 'Загрузка…')));
+  let el;
+  try {
+    if (!initData && !new URLSearchParams(location.search).get('api')) throw new Error('Откройте приложение из Telegram: нажмите кнопку меню бота');
+    el = await screenFor();
+  } catch (e) { el = h('div', { class: 'screen' }, h('h1', {}, 'Ошибка'), h('div', { class: 'toast err' }, e.message), h('button', { class: 'btn line', style: 'margin-top:16px', onclick: () => render() }, 'Повторить')); }
+  app.replaceChildren(el, nav());
+}
+function nav() {
+  const t = (id, label, ic) => h('button', { class: S.tab === id ? 'on' : '', onclick: () => setTab(id), 'aria-label': label }, icon(ic), label);
+  return h('nav', { class: 'nav' }, h('div', {}, t('today', 'Сегодня', 'cal'), t('progress', 'Прогресс', 'chart'), t('coach', 'ИИ-тренер', 'chat'), t('program', 'Программа', 'list')));
+}
+async function exercises() { if (!S.cache.ex) { const r = await call('exercises'); S.cache.ex = r.data || []; } return S.cache.ex; }
+async function screenFor() {
+  if (S.screen === 'workout') return workout();
+  if (S.screen === 'feel') return feel();
+  if (S.screen === 'done') return done();
+  if (S.screen === 'card') return card();
+  if (S.tab === 'progress') return progress();
+  if (S.tab === 'coach') return coach();
+  if (S.tab === 'program') return program();
+  return today();
+}
+const topbar = (mid, right) => h('div', { class: 'top' }, h('button', { class: 'icon', 'aria-label': 'Назад', onclick: back }, icon('back')), mid ? h('span', { class: 'sub', style: 'margin:0;font-weight:700' }, mid) : h('span'), right || h('span', { style: 'width:44px' }));
+
+// ---------- Сегодня ----------
+async function today() {
+  const t = await call('today');
+  if (!t.ok) throw new Error(t.error || 'Ошибка загрузки');
+  if (t.empty) return h('div', { class: 'screen' }, h('h1', {}, 'План не найден'), h('div', { class: 'sub' }, 'Проверьте программу и user_state в базе.'));
+  const d = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+  const weeks = Array.from({ length: t.day.cycle_weeks }, (_, i) => h('i', { class: i + 1 < t.day.week ? 'd' : i + 1 === Number(t.day.week) ? 'c' : '' }));
+  const items = t.exercises.map((e) => h('button', { class: 'item', onclick: () => openCard(e.id) },
+    h('span', { class: 'num' }, e.pos),
+    h('span', { style: 'flex:1;min-width:0' }, h('div', { class: 't' }, e.name), h('div', { class: 's' }, `${MUSCLE[e.muscle] || e.muscle}${e.unilateral ? ' · КРО' : ''}${e.technique ? ' · ' + e.technique : e.sets_total ? ` · ${e.sets_total}×${e.reps ?? 'макс'}` : ''}`)),
+    h('span', { class: 'r' }, e.weight != null ? h('b', {}, `${fmt(e.weight)} кг`) : h('span', {}, 'выберите вес'), e.drop != null ? h('span', {}, `дроп ${fmt(e.drop)}`) : null)));
+  const go1 = h('button', { class: 'btn', onclick: startWorkout }, t.active ? 'Продолжить тренировку' : 'Начать тренировку');
+  return h('div', { class: 'screen' },
+    h('div', { class: 'sub', style: 'margin:0;text-transform:capitalize' }, d),
+    h('h1', { style: 'margin-top:6px' }, `День ${t.day.no} · ${t.day.name}`),
+    h('div', { class: 'row', style: 'margin-top:14px;justify-content:space-between' }, h('b', { style: 'font-size:13px' }, `Неделя ${t.day.week} из ${t.day.cycle_weeks}`), t.techniques.length ? h('span', { class: 'pill' }, t.techniques.join(', ')) : null),
+    h('div', { class: 'bars' }, weeks),
+    h('div', { class: 'list' }, items),
+    h('div', { style: 'margin-top:auto;padding-top:16px' }, go1));
+}
+async function startWorkout() {
+  try { const r = await call('start'); if (!r.ok) throw new Error(r.error || 'Не удалось начать'); S.work = r; S.msg = null; go('workout'); }
+  catch (e) { toast(e.message, true); }
+}
+function toast(text, err) { const old = document.querySelector('.toast.tmp'); if (old) old.remove(); const t = h('div', { class: 'toast tmp' + (err ? ' err' : '') }, text); (document.querySelector('.screen') || app).append(t); setTimeout(() => t.remove(), 5000); }
+
+// ---------- Запись подхода ----------
+async function workout() {
+  let w = S.work; S.work = null;
+  if (!w) w = await call('state');
+  if (!w.ok) throw new Error(w.error || 'Ошибка');
+  if (w.finished && !w.active) { S.doneInfo = w; S.screen = 'done'; return done(); }
+  if (!w.active) { S.screen = null; S.stack = []; return today(); }
+  S.cur = w;
+  const ex = w.exercise, c = w.current;
+  const seg = Array.from({ length: w.n_slots }, (_, i) => h('i', { class: i + 1 < w.pos ? 'd' : i + 1 === Number(w.pos) ? 'c' : '' }));
+  const prev = w.prev_work ? `Прошлый раз: рабочий ${fmt(w.prev_work.weight)} кг × ${w.prev_work.reps}` : 'Прошлых рабочих подходов нет';
+  const rows = w.sets.map((s) => {
+    if (s.done) return h('div', { class: 'set' }, h('span', { class: 'tick' }, icon('check', 14, 3)), `${s.label}${SIDE[s.side]}`, h('span', { class: 'v' }, `${fmt(s.done.weight)} кг × ${s.done.reps}`));
+    if (c && s.idx === c.idx) return nowCard(c, ex);
+    return h('div', { class: 'set todo' }, h('span', { class: 'circ' }), `${s.label}${SIDE[s.side]}`);
+  });
+  const doneWork = w.sets.some((s) => s.done && (s.kind === 'working' || s.kind === 'pyramid_step'));
+  const af = w.after_feel;
+  const banner = S.msg ? h('div', { class: 'toast' }, S.msg) : null;
+  const quick = h('input', { class: 'field', style: 'flex:1;min-width:0', type: 'text', inputmode: 'decimal', placeholder: 'Или напишите: 25 8', 'aria-label': 'Быстрая запись подхода', enterkeyhint: 'done',
+    onkeydown: (e) => { if (e.key === 'Enter') quickSet(quick.value); } });
+  return h('div', { class: 'screen' },
+    topbar(`Упражнение ${w.pos} из ${w.n_slots}`, h('button', { class: 'icon', 'aria-label': 'Описание и техника', onclick: () => openCard(ex.id) }, icon('info'))),
+    h('div', { class: 'bars' }, seg),
+    h('h1', { style: 'margin-top:16px' }, ex.name),
+    h('div', { class: 'row', style: 'gap:8px;margin-top:8px' }, ex.technique ? h('span', { class: 'pill' }, ex.technique) : null, ex.unilateral ? h('span', { class: 'pill mute' }, 'КРО') : null),
+    h('div', { class: 'sub' }, prev),
+    banner,
+    h('div', { style: 'margin-top:16px;display:flex;flex-direction:column;gap:6px' }, rows),
+    h('div', { style: 'margin-top:auto;padding-top:16px' },
+      h('button', { class: 'btn' + (w.finished ? '' : ' line'), disabled: !doneWork, onclick: () => go('feel') }, w.finished ? 'Оценить упражнение' : 'Завершить упражнение'),
+      h('div', { class: 'row', style: 'margin-top:10px;gap:8px' }, quick, h('button', { class: 'btn small', style: 'width:96px', onclick: () => quickSet(quick.value) }, 'Записать')),
+      h('div', { class: 'row', style: 'justify-content:space-between;margin-top:4px' },
+        h('button', { class: 'ghost', onclick: undo }, 'Отменить подход'), h('button', { class: 'ghost', onclick: skip }, 'Пропустить упражнение'))));
+}
+function nowCard(c, ex) {
+  const step = ex.step || 2.5;
+  const wIn = h('input', { type: 'text', inputmode: 'decimal', value: c.weight != null ? fmt(c.weight) : '0', 'aria-label': 'Вес, кг' });
+  const rIn = h('input', { type: 'text', inputmode: 'numeric', value: c.reps ?? 8, 'aria-label': 'Повторения' });
+  const bump = (inp, d, dec) => { const v = num(inp.value) || 0; const n = Math.max(0, Math.round((v + d) * 100) / 100); inp.value = dec ? fmt(n) : String(Math.round(n)); };
+  const ok = h('button', { class: 'btn', style: 'margin-top:14px;height:52px;border-radius:14px', onclick: async () => {
+    const weight = num(wIn.value), reps = num(rIn.value);
+    if (!Number.isFinite(weight) || !Number.isInteger(reps)) return toast('Проверьте вес и повторения', true);
+    await saveSet(weight, reps, ok);
+  } }, 'Подход выполнен');
+  const stp = (label, inp, d, dec) => h('div', {}, h('label', {}, label),
+    h('div', { class: 'stp' }, h('button', { 'aria-label': 'Меньше', onclick: () => bump(inp, -d, dec) }, '−'), inp, h('button', { 'aria-label': 'Больше', onclick: () => bump(inp, d, dec) }, '+')));
+  return h('div', { class: 'now' },
+    h('div', { class: 'h' }, h('b', {}, `${c.label}${SIDE[c.side]}`), h('span', {}, c.hint || '')),
+    h('div', { class: 'steps' }, stp('Вес, кг', wIn, step, true), stp('Повторения', rIn, 1, false)), ok);
+}
+async function saveSet(weight, reps, btn) {
+  if (S.busy) return; S.busy = true; if (btn) btn.disabled = true;
+  try {
+    const r = await call('set', { weight, reps });
+    if (!r.ok) throw new Error(r.error || 'Не записалось');
+    haptic('success'); S.work = r; S.msg = null; render();
+  } catch (e) { toast(e.message, true); if (btn) btn.disabled = false; } finally { S.busy = false; }
+}
+function quickSet(text) {
+  const m = String(text).trim().replace(',', '.').match(/^(\d+(?:\.\d+)?)\s*(?:кг|kg)?\s*(?:[x×*х]|\s)\s*(\d+)$/i);
+  if (m) return saveSet(Number(m[1]), Number(m[2]));
+  const only = String(text).trim().match(/^\d+$/);
+  const last = S.cur && S.cur.current && S.cur.current.weight;
+  if (only && last != null) return saveSet(Number(last), Number(only[0]));
+  toast('Не понял. Пишите «вес повторения», например 25 8.', true);
+}
+async function undo() {
+  try { const r = await call('undo'); if (!r.ok) throw new Error(r.error); S.work = r; S.msg = 'Последний подход отменён.'; render(); } catch (e) { toast(e.message, true); }
+}
+function ask(text, ok) {
+  if (tg && tg.showConfirm) tg.showConfirm(text, (v) => v && ok()); else if (confirm(text)) ok();
+}
+function skip() {
+  ask('Пропустить это упражнение?', async () => {
+    try { const r = await call('skip'); if (!r.ok) throw new Error(r.error || 'Ошибка');
+      if (r.finished) { S.doneInfo = r; S.screen = 'done'; return render(); }
+      S.work = r; S.msg = 'Упражнение пропущено.'; render(); } catch (e) { toast(e.message, true); }
+  });
+}
+
+// ---------- Самочувствие ----------
+function feel() {
+  const w = S.cur; if (!w) { S.screen = 'workout'; return workout(); }
+  const ex = w.exercise, step = ex.step || 2.5;
+  const work = w.sets.filter((s) => s.done && (s.kind === 'working' || s.kind === 'pyramid_step'));
+  const first = work[0], last = work[work.length - 1];
+  const base = first ? first.done.weight : null;
+  const dropS = w.sets.filter((s) => s.done && s.kind === 'drop').pop();
+  const calc = (f) => { if (base == null) return null; const n = f === 'easy' ? base + step : base; return { n, d: Math.round((n * 0.7) / step) * step }; };
+  const opts = [['easy', 'Легко', 'Был запас, мог больше', `+${fmt(step)} кг`], ['ok', 'В самый раз', 'Как и планировал', 'тот же вес'], ['hard', 'Тяжело', 'На пределе, техника плыла', 'тот же вес']];
+  const box = h('div', {});
+  const draw = () => {
+    box.replaceChildren(...opts.map(([k, t, s, r]) => h('button', { class: 'opt' + (S.feelPick === k ? ' on' : ''), onclick: () => { S.feelPick = k; draw(); } },
+      h('span', { class: S.feelPick === k ? 'tick' : 'circ' }, S.feelPick === k ? icon('check', 14, 3) : null), h('span', { style: 'flex:1' }, h('b', {}, t), h('small', {}, s)), h('em', {}, r))));
+    const c = S.feelPick ? calc(S.feelPick) : null;
+    nextBox.replaceChildren(h('div', { class: 'sub', style: 'margin:0' }, 'Следующая тренировка'),
+      h('div', { class: 'row', style: 'gap:10px;align-items:baseline;margin-top:6px' }, h('span', { class: 'big', style: 'color:var(--acc)' }, c ? `${fmt(c.n)} кг` : '—'), h('span', { class: 'muted', style: 'font-size:14px' }, c ? `рабочий, дроп ${fmt(c.d)} кг` : 'выберите оценку')),
+      h('div', { class: 'sub', style: 'font-size:12px;line-height:1.5' }, `Шаг для этого тренажёра ${fmt(step)} кг. «Легко» добавляет шаг, остальное оставляет вес.`));
+    save.disabled = !S.feelPick;
+  };
+  const nextBox = h('div', { class: 'card', style: 'margin-top:16px' });
+  const save = h('button', { class: 'btn', onclick: async () => {
+    save.disabled = true;
+    try { const r = await call('feel', { feel: S.feelPick }); if (!r.ok) throw new Error(r.error || 'Не сохранилось');
+      haptic('success'); S.feelPick = null; S.stack.pop();
+      if (r.finished) { S.doneInfo = r; S.screen = 'done'; return render(); }
+      const a = r.after_feel; S.msg = a ? `Дался: ${{ easy: 'легко', ok: 'в самый раз', hard: 'тяжело' }[a.feel]}. Следующий раз: ${fmt(a.next_weight)} кг, дроп ${fmt(a.drop_weight)} кг.` : null;
+      S.work = r; S.screen = 'workout'; render();
+    } catch (e) { toast(e.message, true); save.disabled = false; }
+  } }, 'Сохранить и продолжить');
+  const el = h('div', { class: 'screen' }, topbar(),
+    h('h1', { style: 'margin-top:12px;font-size:24px' }, 'Как прошло упражнение?'), h('div', { class: 'sub', style: 'font-size:14px' }, ex.name),
+    h('div', { class: 'row', style: 'gap:8px;margin-top:16px' },
+      h('div', { class: 'card', style: 'flex:1;margin:0;padding:12px 14px' }, h('div', { class: 'sub', style: 'margin:0' }, 'Рабочий'), h('div', { style: 'margin-top:4px;font-size:16px;font-weight:800' }, last ? `${fmt(last.done.weight)} кг × ${last.done.reps}` : '—')),
+      dropS ? h('div', { class: 'card', style: 'flex:1;margin:0;padding:12px 14px' }, h('div', { class: 'sub', style: 'margin:0' }, 'Дроп'), h('div', { style: 'margin-top:4px;font-size:16px;font-weight:800' }, `${fmt(dropS.done.weight)} кг × ${dropS.done.reps}`)) : null),
+    box, nextBox, h('div', { style: 'margin-top:auto;padding-top:16px' }, save));
+  draw(); return el;
+}
+
+function done() {
+  const i = S.doneInfo || {}; const n = i.next || {}; const a = i.after_feel;
+  return h('div', { class: 'screen' }, h('div', { class: 'center' },
+    h('div', { class: 'tick', style: 'width:56px;height:56px;border-radius:28px;margin:0 auto 16px' }, icon('check', 28, 3)),
+    h('h1', { style: 'color:var(--text)' }, 'Тренировка завершена'),
+    a ? h('div', { class: 'toast', style: 'text-align:left' }, `Следующий раз: ${fmt(a.next_weight)} кг, дроп ${fmt(a.drop_weight)} кг.`) : null,
+    n.day ? h('div', { class: 'sub', style: 'font-size:14px;margin-top:12px' }, `Следующая: день ${n.day}${n.name ? ' — ' + n.name : ''}, неделя ${n.week}${Number(n.cycle) > 1 ? ', цикл ' + n.cycle : ''}.`) : null,
+    h('button', { class: 'btn', style: 'margin-top:24px', onclick: () => setTab('today') }, 'К плану')));
+}
+
+// ---------- Карточка упражнения ----------
+async function openCard(id) { await exercises(); go('card', { cardId: id }); }
+function card() {
+  const e = (S.cache.ex || []).find((x) => Number(x.id) === Number(S.cardId));
+  if (!e) return h('div', { class: 'screen' }, topbar(), h('div', { class: 'center' }, 'Упражнение не найдено'));
+  const filled = !!(e.description || e.technique);
+  const steps = (e.technique || '').split('\n').filter(Boolean).map((t, i) => h('div', {}, h('span', { class: 'step-n' }, i + 1), h('span', {}, t)));
+  return h('div', { class: 'screen' }, topbar(),
+    e.video_url ? h('button', { class: 'video', onclick: () => { try { tg && tg.openLink ? tg.openLink(e.video_url) : window.open(e.video_url, '_blank'); } catch (x) {} } }, h('i', {}, icon('play', 24)), 'Видео техники (поиск на YouTube)') : null,
+    h('h1', { style: 'margin-top:14px' }, e.name),
+    h('div', { class: 'chips' }, h('span', { class: 'pill' }, MUSCLE[e.muscle] || e.muscle), ...(e.secondary || []).map((m) => h('span', { class: 'pill mute' }, MUSCLE[m] || m)), e.equipment ? h('span', { class: 'pill mute' }, e.equipment) : null, e.unilateral ? h('span', { class: 'pill mute' }, 'КРО') : null),
+    !filled ? h('div', { class: 'card muted' }, 'Описание пока не заполнено.') : null,
+    e.description ? h('div', { class: 'card', style: 'font-size:14px;line-height:1.5;color:var(--soft)' }, e.description) : null,
+    e.setup ? h('div', { class: 'card' }, h('b', { style: 'font-size:14px' }, 'Настройка'), h('div', { style: 'margin-top:8px;font-size:13px;line-height:1.5;color:var(--soft)' }, e.setup)) : null,
+    steps.length ? h('div', { class: 'card' }, h('b', { style: 'font-size:14px' }, 'Техника'), h('div', { class: 'ol' }, steps)) : null,
+    (e.cues || e.mistakes) ? h('div', { class: 'two', style: 'margin-top:10px' },
+      e.cues ? h('div', { class: 'card', style: 'margin:0' }, h('b', { style: 'font-size:14px;color:var(--acc)' }, 'Секреты'), ...e.cues.map((t) => h('div', { style: 'margin-top:8px;font-size:13px;line-height:1.45;color:var(--soft)' }, t))) : null,
+      e.mistakes ? h('div', { class: 'card', style: 'margin:0' }, h('b', { style: 'font-size:14px;color:var(--warn)' }, 'Ошибки'), ...e.mistakes.map((t) => h('div', { style: 'margin-top:8px;font-size:13px;line-height:1.45;color:var(--soft)' }, t))) : null) : null,
+    h('div', { class: 'card row' }, h('b', { style: 'font-size:14px;flex:1' }, 'Шаг веса на этом тренажёре'), h('b', { style: 'color:var(--acc)' }, `${fmt(e.step)} кг`)));
+}
+
+// ---------- Прогресс ----------
+function chart(points, label) {
+  const W = 326, H = 110, P = 8;
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('width', '100%'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label); svg.style.display = 'block';
+  const ys = points.map((p) => p.y); let lo = Math.min(...ys), hi = Math.max(...ys); if (lo === hi) { lo -= 1; hi += 1; }
+  const X = (i) => P + (points.length === 1 ? (W - 2 * P) / 2 : (i * (W - 2 * P)) / (points.length - 1));
+  const Y = (v) => H - 20 - ((v - lo) / (hi - lo)) * (H - 40);
+  const add = (t, a) => { const e = document.createElementNS(ns, t); for (const k in a) e.setAttribute(k, a[k]); svg.append(e); return e; };
+  [20, 50, 80].forEach((y) => add('line', { x1: 0, x2: W, y1: y, y2: y, stroke: '#2A2F36', 'stroke-width': 1 }));
+  add('polyline', { points: points.map((p, i) => `${X(i)},${Y(p.y)}`).join(' '), fill: 'none', stroke: '#C6F24E', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+  points.forEach((p, i) => add('circle', i === points.length - 1 ? { cx: X(i), cy: Y(p.y), r: 6, fill: '#0F1113', stroke: '#C6F24E', 'stroke-width': 2.5 } : { cx: X(i), cy: Y(p.y), r: 3.5, fill: '#C6F24E' }));
+  return svg;
+}
+const dshort = (s) => { const [y, m, d] = String(s).split('-'); return `${d}.${m}`; };
+async function progress() {
+  const seg = h('div', { class: 'seg' }, [['ex', 'Упражнение'], ['hist', 'История'], ['body', 'Вес тела']].map(([k, t]) => h('button', { class: S.seg === k ? 'on' : '', onclick: () => { S.seg = k; render(); } }, t)));
+  let body;
+  if (S.seg === 'hist') body = await histView(); else if (S.seg === 'body') body = await bodyView(); else body = await exView();
+  return h('div', { class: 'screen' }, h('h1', { style: 'font-size:24px' }, 'Прогресс'), seg, body);
+}
+async function exView() {
+  const r = await call('progress', S.progEx ? { exercise_id: S.progEx } : {});
+  if (!r.ok) throw new Error(r.error || 'Ошибка');
+  const d = r.data; S.progEx = d.exercise_id;
+  const sel = h('select', { class: 'field', style: 'margin-top:14px', 'aria-label': 'Упражнение', onchange: () => { S.progEx = Number(sel.value); render(); } },
+    (d.exercises || []).map((e) => h('option', { value: e.id, selected: Number(e.id) === Number(d.exercise_id) }, e.name)));
+  const pts = (d.series || []).map((s) => ({ x: s.day, y: Number(S.metric === 'e1rm' ? s.e1rm : s.kg) }));
+  const first = pts[0], last = pts[pts.length - 1];
+  const delta = first && last ? last.y - first.y : 0;
+  const chartCard = h('div', { class: 'card' },
+    h('div', { class: 'row' }, h('div', { class: 'sub', style: 'margin:0;flex:1' }, S.metric === 'e1rm' ? 'Расчётный 1ПМ' : 'Рабочий вес'),
+      h('div', { class: 'row', style: 'gap:6px' }, [['kg', 'Вес'], ['e1rm', '1ПМ']].map(([k, t]) => h('button', { class: 'pill' + ((S.metric || 'kg') === k ? '' : ' mute'), style: 'cursor:pointer', onclick: () => { S.metric = k; render(); } }, t)))),
+    pts.length ? h('div', { class: 'row', style: 'gap:10px;align-items:baseline;margin-top:6px' }, h('span', { class: 'big' }, `${fmt(last.y)} кг`), h('span', { class: 'good', style: delta < 0 ? 'color:var(--warn)' : '' }, pts.length > 1 ? `${delta >= 0 ? '+' : ''}${fmt(delta)} кг за период` : '')) : null,
+    pts.length > 1 ? h('div', {}, h('div', { style: 'margin-top:8px' }, chart(pts, 'График по датам')), h('div', { class: 'row', style: 'justify-content:space-between;margin-top:4px;font-size:11px;color:var(--mute)' }, h('span', {}, dshort(first.x)), h('span', {}, dshort(last.x))))
+      : h('div', { class: 'sub' }, pts.length ? 'Пока одна тренировка, график появится со второй.' : 'Пока нет рабочих подходов по этому упражнению.'));
+  const vol = d.volume || []; const mx = Math.max(1, ...vol.map((v) => Math.max(Number(v.cur) || 0, Number(v.prev) || 0)));
+  const volCard = h('div', { class: 'card' }, h('div', { class: 'sub', style: 'margin:0' }, 'Рабочие подходы: эта неделя (полоса) и прошлая (черта)'),
+    vol.length ? vol.map((v) => h('div', { class: 'vol' }, h('span', { class: 'n' }, MUSCLE[v.muscle] || v.muscle), h('div', { class: 'tr' }, h('i', { style: `width:${((Number(v.cur) || 0) / mx) * 100}%` }), h('u', { style: `width:${((Number(v.prev) || 0) / mx) * 100}%` })), h('span', { class: 'c' }, Number(v.cur) || 0))) : h('div', { class: 'sub' }, 'Данных за две последние недели нет.'));
+  const stalls = (d.stalls || []).map((s) => h('div', { class: 'card st' }, h('span', { class: 'dot' }), h('div', {}, h('div', { style: 'font-size:14px;font-weight:800' }, `Застой: ${s.name}`), h('div', { class: 'sub', style: 'line-height:1.45' }, `Три тренировки подряд ${fmt(s.kg)} кг. Попробуйте добавить повторения или сменить хват.`))));
+  return h('div', {}, sel, chartCard, volCard, stalls);
+}
+async function histView() {
+  const r = await call('history'); if (!r.ok) throw new Error(r.error || 'Ошибка');
+  const list = r.data || [];
+  if (!list.length) return h('div', { class: 'center' }, 'Тренировок пока нет.');
+  return h('div', {}, list.map((w) => {
+    const body = h('div', { class: 'hist-x', hidden: true }, (w.exercises || []).map((e) => {
+      const g = (e.sets || []).map((s) => `${s.kind === 'warmup' || s.kind === 'lead' ? '(' : ''}${fmt(s.weight)}×${s.reps}${s.kind === 'warmup' || s.kind === 'lead' ? ')' : ''}`).join('  ');
+      return h('div', {}, h('b', {}, e.name + (e.feel ? ` · ${{ easy: 'легко', ok: 'в самый раз', hard: 'тяжело' }[e.feel]}` : '')), h('span', { class: 'muted' }, g));
+    }));
+    const head = h('button', { class: 'hist-h', onclick: () => { body.hidden = !body.hidden; } },
+      h('span', { style: 'flex:1' }, h('div', { style: 'font-size:14px;font-weight:800' }, `${dshort(w.day)} · день ${w.day_no ?? '?'}${w.day_name ? ', ' + w.day_name : ''}`), h('div', { class: 'sub', style: 'margin-top:2px' }, `Неделя ${w.week_no}${w.ended ? '' : ' · не завершена'} · упражнений: ${(w.exercises || []).length}`)));
+    return h('div', { class: 'card' }, head, body);
+  }));
+}
+async function bodyView() {
+  const r = await call('body'); if (!r.ok) throw new Error(r.error || 'Ошибка');
+  const d = r.data || [];
+  const inp = h('input', { class: 'field', style: 'flex:1', type: 'text', inputmode: 'decimal', placeholder: 'Вес сегодня, кг', 'aria-label': 'Вес тела, кг' });
+  const add = async () => { const v = num(inp.value); if (!(v > 20 && v < 400)) return toast('Введите вес в килограммах, например 82,4', true);
+    try { const x = await call('body', { weight: v }); if (!x.ok) throw new Error(x.error); haptic('success'); render(); } catch (e) { toast(e.message, true); } };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') add(); });
+  const pts = d.map((x) => ({ x: x.day, y: Number(x.kg) }));
+  const last = pts[pts.length - 1], first = pts[0];
+  return h('div', {}, h('div', { class: 'row', style: 'gap:8px;margin-top:14px' }, inp, h('button', { class: 'btn small', style: 'width:110px', onclick: add }, 'Записать')),
+    h('div', { class: 'card' }, h('div', { class: 'sub', style: 'margin:0' }, 'Вес тела'),
+      last ? h('div', { class: 'row', style: 'gap:10px;align-items:baseline;margin-top:6px' }, h('span', { class: 'big' }, `${fmt(last.y)} кг`), pts.length > 1 ? h('span', { class: 'good', style: last.y - first.y > 0 ? 'color:var(--warn)' : '' }, `${last.y - first.y >= 0 ? '+' : ''}${fmt(last.y - first.y)} кг с ${dshort(first.x)}`) : null) : null,
+      pts.length > 1 ? h('div', { style: 'margin-top:8px' }, chart(pts, 'График веса тела')) : h('div', { class: 'sub' }, last ? 'Нужна ещё одна запись для графика.' : 'Записей пока нет.')),
+    pts.length ? h('div', { class: 'card' }, [...pts].reverse().slice(0, 10).map((p) => h('div', { class: 'row', style: 'justify-content:space-between;padding:6px 0;font-size:14px' }, h('span', { class: 'muted' }, dshort(p.x)), h('b', {}, `${fmt(p.y)} кг`)))) : null);
+}
+
+// ---------- ИИ-тренер ----------
+function coach() {
+  const sug = ['Почему встал жим?', 'Где у меня застой?', 'Что улучшить на этой неделе?'];
+  const list = h('div', { class: 'chat' }, S.chat.length ? S.chat.map((m) => h('div', { class: m.me ? 'me' : 'ai' }, m.text, m.src ? h('div', { class: 'sub', style: 'margin-top:6px' }, m.src) : null))
+    : h('div', { class: 'chips' }, sug.map((t) => h('button', { class: 'sug', onclick: () => send(t) }, t))));
+  const inp = h('input', { class: 'field', style: 'flex:1;min-width:0', type: 'text', placeholder: 'Спросите про свои тренировки', 'aria-label': 'Вопрос ИИ-тренеру', enterkeyhint: 'send', onkeydown: (e) => { if (e.key === 'Enter') send(inp.value); } });
+  async function send(text) {
+    text = String(text).trim(); if (!text || S.busy) return; S.busy = true;
+    S.chat.push({ me: true, text }); S.chat.push({ text: 'Думаю…', tmp: true }); renderKeep();
+    try { const r = await call('ask', { question: text }); S.chat.pop(); S.chat.push({ text: r.ok ? r.text : (r.error || 'Ошибка') }); }
+    catch (e) { S.chat.pop(); S.chat.push({ text: e.message }); } finally { S.busy = false; renderKeep(); }
+  }
+  return h('div', { class: 'screen' }, h('h1', { style: 'font-size:24px' }, 'ИИ-тренер'), h('div', { class: 'sub' }, 'Отвечает по вашей истории за 8 недель. Веса не назначает: их считает система по кнопкам самочувствия.'),
+    list, h('div', { class: 'sticky' }, inp, h('button', { class: 'btn small', style: 'width:96px', onclick: () => send(inp.value) }, 'Спросить')));
+}
+function renderKeep() { render().then(() => window.scrollTo(0, document.body.scrollHeight)); }
+
+// ---------- Программа ----------
+async function program() {
+  const r = await call('program', S.progWeek ? { week: S.progWeek } : {}); if (!r.ok) throw new Error(r.error || 'Ошибка');
+  const p = r.data; const ex = await exercises();
+  const weeks = Array.from({ length: p.cycle_weeks }, (_, i) => h('button', { class: i + 1 === Number(p.week) ? 'on' : '', onclick: () => { S.progWeek = i + 1; render(); }, 'aria-label': `Неделя ${i + 1}` }, `Нед. ${i + 1}`));
+  const idOf = (name) => (ex.find((e) => e.name === name) || {}).id;
+  const days = (p.days || []).map((d) => h('div', { class: 'card' }, h('div', { style: 'font-size:15px;font-weight:800' }, `День ${d.day_no} · ${d.name}`,
+      Number(d.day_no) === Number(p.next_day) ? h('span', { class: 'pill', style: 'margin-left:8px' }, 'следующий') : null),
+    (d.exercises || []).map((e) => h('button', { class: 'hist-h', style: 'padding:8px 0;border-top:1px solid var(--line);margin-top:8px', onclick: () => idOf(e.name) && openCard(idOf(e.name)) },
+      h('span', { class: 'num', style: 'width:26px;height:26px' }, e.pos), h('span', { style: 'flex:1;font-size:13px;font-weight:700' }, e.name),
+      h('span', { class: 'muted', style: 'font-size:12px;text-align:right' }, e.technique || (e.sets_total ? `${e.sets_total}×${e.reps_max ? 'макс' : e.reps}${e.split ? ` (${e.split})` : ''}` : ''))))));
+  const tech = (p.techniques || []).filter((t) => t.rule).map((t) => h('div', { style: 'margin-top:10px' }, h('div', { style: 'font-size:14px;font-weight:700' }, t.name),
+    h('div', { class: 'sub', style: 'margin-top:2px;line-height:1.45' }, [t.rule.prep, ...(t.rule.steps || [])].filter(Boolean).join(' → '))));
+  return h('div', { class: 'screen' }, h('h1', { style: 'font-size:24px' }, 'Программа'), h('div', { class: 'sub' }, `${(p.days || []).length} дня, цикл ${p.cycle_weeks} недели, повторяется`),
+    h('div', { class: 'seg' }, weeks), days,
+    h('div', { class: 'card' }, h('b', { style: 'font-size:14px' }, 'Техники'), h('div', { class: 'sub', style: 'margin-top:2px' }, 'По этим правилам сервис считает веса'), tech));
+}
+render();
+</script>
+</body>
+</html>
