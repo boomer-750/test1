@@ -186,6 +186,12 @@ button.set{width:100%;border:0;text-align:left;color:var(--text)}
 .lb .bar button{width:48px;height:48px;border-radius:24px;border:0;background:rgba(255,255,255,.14);color:#fff;font-size:22px;font-weight:700;display:flex;align-items:center;justify-content:center}
 .lb .hint{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;font-size:12px;color:#9AA3AC}
 .zbar{display:flex;align-items:center;gap:10px;margin-top:8px}.zbar b{flex:1;text-align:center;font-size:22px}
+.ai-wrap{align-self:stretch;display:flex;flex-direction:column;gap:8px}.ai-wrap .ai{align-self:flex-start}
+.act{background:var(--card2);border:1px solid var(--line2);border-radius:16px;padding:12px 14px}
+.act.done{border-color:rgba(198,242,78,.4)}.act.off{opacity:.55}
+.act-more{margin-top:8px;font-size:13px;line-height:1.5;color:var(--soft)}.act-more p{margin:8px 0}
+.chk{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:var(--card2);font-size:13px;font-weight:700;cursor:pointer}
+.chk input{accent-color:#C6F24E;width:16px;height:16px;margin:0}
 @media (prefers-reduced-motion:no-preference){.screen.anim{animation:in .16s ease-out}@keyframes in{from{opacity:.5;transform:translateY(4px)}}}
 </style>
 </head>
@@ -197,7 +203,7 @@ button.set{width:100%;border:0;text-align:left;color:var(--text)}
 'use strict';
 // ====== Настройка: адрес вебхука n8n (workflow fit-api, путь /fit-api) ======
 const DEFAULT_API = 'https://webpowerai.ru/webhook/fit-api';
-const APP_VERSION = '2026.10.30';
+const APP_VERSION = '2026.10.30-ai';
 // ===========================================================================
 const tg = window.Telegram && window.Telegram.WebApp;
 const initData = (tg && tg.initData) || '';
@@ -375,7 +381,7 @@ function info(ex) {                       // описание упражнени
   const b = EXINFO[ex.name] || {};
   const pick = (k) => { const v = ex[k]; return v == null || v === '' || (Array.isArray(v) && !v.length) ? b[k] : v; };
   return { ...ex, equipment: pick('equipment'), secondary: pick('secondary') || [], description: pick('description'), setup: pick('setup'),
-    technique: pick('technique'), cues: pick('cues') || [], mistakes: pick('mistakes') || [], video_url: pick('video_url'), target: b.target };
+    technique: pick('technique'), cues: pick('cues') || [], mistakes: pick('mistakes') || [], video_url: pick('video_url'), target: ex.target_feel || b.target };
 }
 
 // ---------- Сегодня ----------
@@ -560,24 +566,128 @@ async function bodyView() {
     pts.length ? h('div', { class: 'card' }, [...pts].reverse().slice(0, 14).map((p) => h('div', { class: 'kv' }, h('span', { class: 'muted' }, dshort(p.x)), h('b', {}, `${fmt(p.y)} кг`)))) : null);
 }
 
-// ---------- ИИ-тренер ----------
+// ---------- ИИ-тренер: вопросы и действия с подтверждением ----------
+const OP_ICON = { ex_new: 'note', ex_update: 'note', add_to_day: 'list', replace: 'order', set_plan: 'list', move: 'order', remove: 'x', target: 'chart', note: 'pen', rename_day: 'pen' };
+const planTxtA = (pl) => !pl ? '' : pl.technique ? (TECHS.find(([k]) => k === pl.technique) || [, pl.technique])[1] : `${pl.sets_total}×${pl.reps_max ? 'макс' : pl.reps}`;
+function actionSummary(a) {
+  switch (a.op) {
+    case 'ex_new': return [`${MUSCLE[a.exercise.muscle] || a.exercise.muscle}${a.exercise.secondary && a.exercise.secondary.length ? ' + ' + a.exercise.secondary.map((m) => MUSCLE[m] || m).join(', ') : ''} · шаг ${fmt(a.exercise.step)} кг`,
+      a.replace_slot_id ? `Заменит «${a.replace_name}» в дне ${a.day_no}` : a.day_no ? `В день ${a.day_no}${a.position ? `, место ${a.position}` : ''} · ${planTxtA(a.plan)} на все недели` : 'Только в библиотеку, без программы'];
+    case 'ex_update': return [`Обновит описание «${a.exercise_name}»`];
+    case 'add_to_day': return [`«${a.exercise_name}» → день ${a.day_no}${a.position ? `, место ${a.position}` : ''} · ${planTxtA(a.plan)}`];
+    case 'replace': return [`День ${a.day_no}: «${a.from_name}» → «${a.exercise_name}»`];
+    case 'set_plan': return [`«${a.exercise_name}», день ${a.day_no}: ${planTxtA(a.plan)} · ${a.week ? `неделя ${a.week}` : 'все недели'}`];
+    case 'move': return [`«${a.exercise_name}», день ${a.day_no}: место ${a.from} → ${a.position}`];
+    case 'remove': return [`Убрать «${a.exercise_name}» из дня ${a.day_no}. История подходов сохранится.`];
+    case 'target': return [`«${a.exercise_name}»: ${fmt(a.weight)} кг на следующую тренировку`];
+    case 'note': return [`Заметка к «${a.exercise_name}»: ${a.text}`];
+    case 'rename_day': return [`День ${a.day_no}: «${a.day_name}» → «${a.text}»`];
+    default: return [];
+  }
+}
+const planArgs = (pl) => ({ technique: (pl && pl.technique) || '', sets_total: pl && pl.sets_total != null ? pl.sets_total : '', reps: pl && pl.reps != null ? pl.reps : '', reps_max: !!(pl && pl.reps_max) });
+const exPayload = (id, e, keep) => ({ id, name: e.name, muscle: e.muscle, unilateral: !!e.unilateral, step: e.step, equipment: e.equipment || '', description: e.description || '',
+  technique: (e.technique_steps || []).join('\n'), video_url: (keep && keep.video_url) || '', note: (keep && keep.note) || '',
+  secondary: (e.secondary || []).join(','), setup: e.setup || '', cues: (e.cues || []).join('\n'), mistakes: (e.mistakes || []).join('\n'), target_feel: e.target_feel || '' });
+async function applyAction(a) {
+  const place = async (slotId, pos) => { if (pos) await edit('slot_place', { slot_id: slotId, pos }).catch(() => {}); };
+  switch (a.op) {
+    case 'ex_new': {
+      if (!a.result_id) { const d = await edit('ex_save', exPayload(0, a.exercise)); a.result_id = Number(d.id); }   // при повторе не создаём второй раз
+      if (a.replace_slot_id) await edit('slot_ex', { slot_id: a.replace_slot_id, exercise_id: a.result_id });
+      else if (a.day_no) { const s = await edit('slot_add', { day_no: a.day_no, exercise_id: a.result_id, ...planArgs(a.plan) }); await place(Number(s.id), a.position); }
+      break;
+    }
+    case 'ex_update': {
+      invalidate('ex'); const raw = (await exercises()).find((x) => Number(x.id) === Number(a.exercise_id)) || {};
+      await edit('ex_save', exPayload(a.exercise_id, a.exercise, raw)); a.result_id = a.exercise_id; break;
+    }
+    case 'add_to_day': { const s = await edit('slot_add', { day_no: a.day_no, exercise_id: a.exercise_id, ...planArgs(a.plan) }); await place(Number(s.id), a.position); a.result_id = a.exercise_id; break; }
+    case 'replace': await edit('slot_ex', { slot_id: a.slot_id, exercise_id: a.exercise_id }); a.result_id = a.exercise_id; break;
+    case 'set_plan': await edit('slot_week', { slot_id: a.slot_id, week: a.week || 0, ...planArgs(a.plan) }); break;
+    case 'move': await edit('slot_place', { slot_id: a.slot_id, pos: a.position }); break;
+    case 'remove': await edit('slot_del', { slot_id: a.slot_id }); break;
+    case 'target': await edit('target', { exercise_id: a.exercise_id, weight: a.weight }); a.result_id = a.exercise_id; break;
+    case 'note': await edit('note', { exercise_id: a.exercise_id, note: a.text }); a.result_id = a.exercise_id; break;
+    case 'rename_day': await edit('day_name', { day_no: a.day_no, name: a.text }); break;
+    default: throw new Error('Неизвестное действие');
+  }
+  invalidate('ex', 'prog', 'progress', 'exp');
+}
+const saveChat = () => ls.set('fit.chat', S.chat.filter((m) => !m.tmp));
+async function runActions(list, btn) {
+  if (S.busy) return; S.busy = true; if (btn) btn.disabled = true;
+  let ok = 0;
+  for (const a of list) {
+    if (a.status === 'done' || a.status === 'cancel') continue;
+    try { await applyAction(a); a.status = 'done'; a.err = null; ok++; }
+    catch (e) { a.status = 'err'; a.err = e.message; }
+    saveChat();
+  }
+  S.busy = false;
+  if (ok) { haptic('success'); toast(ok === 1 ? 'Применено' : `Применено: ${ok}`, 'ok'); }
+  render();
+}
+function actionCard(a) {
+  const lines = actionSummary(a);
+  let more = null;
+  if ((a.op === 'ex_new' || a.op === 'ex_update') && a.exercise) {
+    const e = a.exercise, sec = new Set(e.secondary || []);
+    const box = h('div', { class: 'act-more', hidden: true },
+      h('div', { class: 'row', style: 'gap:12px;align-items:center' }, muscleMap((m) => (m === e.muscle ? 'p' : sec.has(m) ? 's' : 0), 'Работающие мышцы'),
+        h('div', { style: 'flex:1;font-size:12px;line-height:1.5;color:var(--soft)' }, e.target_feel ? `Чувствовать: ${e.target_feel}` : null, e.equipment ? h('div', { class: 'muted', style: 'margin-top:4px' }, e.equipment) : null)),
+      e.description ? h('p', {}, e.description) : null,
+      e.setup ? h('p', {}, h('b', {}, 'Настройка. '), e.setup) : null,
+      (e.technique_steps || []).length ? h('div', { class: 'ol' }, e.technique_steps.map((t, i) => h('div', {}, h('span', { class: 'step-n' }, i + 1), h('span', {}, t)))) : null,
+      (e.cues || []).length ? h('div', {}, h('b', { style: 'color:var(--acc);font-size:13px' }, 'Секреты'), e.cues.map((t) => h('div', { class: 'bul a' }, t))) : null,
+      (e.mistakes || []).length ? h('div', {}, h('b', { style: 'color:var(--warn);font-size:13px' }, 'Ошибки'), e.mistakes.map((t) => h('div', { class: 'bul w' }, t))) : null,
+      h('div', { class: 'sub', style: 'font-size:11px' }, 'Описание составил ИИ — проверьте. Исправить можно в карточке упражнения → «Изменить».'));
+    const tgl = h('button', { class: 'ghost', style: 'padding:6px 0;min-height:32px;color:var(--soft)', onclick: () => { box.hidden = !box.hidden; tgl.textContent = box.hidden ? 'Показать описание и технику' : 'Скрыть описание'; } }, 'Показать описание и технику');
+    more = h('div', {}, tgl, box);
+  }
+  const st = a.status || 'new';
+  const apply = h('button', { class: 'btn small', onclick: () => runActions([a], apply) }, st === 'err' ? 'Повторить' : 'Применить');
+  const foot = st === 'done'
+    ? h('div', { class: 'row gap8', style: 'margin-top:8px' }, h('span', { class: 'good' }, '✓ Применено'), a.result_id ? h('button', { class: 'ghost', style: 'padding:6px 0;min-height:32px;margin-left:auto;color:var(--acc)', onclick: () => openCard(a.result_id) }, 'Открыть упражнение') : null)
+    : st === 'cancel' ? h('div', { class: 'sub' }, 'Отменено')
+    : h('div', {}, st === 'err' ? h('div', { class: 'toast err', style: 'margin-top:8px' }, a.err) : null,
+        h('div', { class: 'row gap8', style: 'margin-top:10px' }, apply, h('button', { class: 'btn line small', onclick: () => { a.status = 'cancel'; saveChat(); render(); } }, 'Отмена')));
+  return h('div', { class: 'act' + (st === 'done' ? ' done' : st === 'cancel' ? ' off' : '') },
+    h('div', { class: 'row gap8', style: 'align-items:flex-start' }, h('span', { class: 'num', style: 'width:28px;height:28px' }, icon(OP_ICON[a.op] || 'list', 15)), h('b', { style: 'flex:1;font-size:14px;line-height:1.35' }, a.label)),
+    lines.map((t) => h('div', { class: 'sub', style: 'margin-top:4px' }, t)), more, foot);
+}
 function coach() {
-  const sug = ['Почему встал жим в кроссовере?', 'Где у меня застой?', 'Что улучшить на этой неделе?', 'Хватает ли мне объёма на спину?'];
-  const list = h('div', { class: 'chat' }, S.chat.length ? S.chat.map((m) => h('div', { class: (m.me ? 'me' : 'ai') + (m.err ? ' err' : '') }, m.tmp ? h('span', { class: 'typing', 'aria-label': 'Тренер печатает' }, h('span'), h('span'), h('span')) : m.text))
-    : h('div', {}, h('div', { class: 'sub' }, 'Например:'), h('div', { class: 'chips' }, sug.map((t) => h('button', { class: 'sug', onclick: () => send(t) }, t)))));
-  const inp = h('input', { class: 'field', style: 'flex:1;min-width:0', type: 'text', placeholder: 'Спросите про свои тренировки', 'aria-label': 'Вопрос ИИ-тренеру', enterkeyhint: 'send', maxlength: 500, onkeydown: (e) => { if (e.key === 'Enter') send(inp.value); } });
+  const sug = ['Добавь упражнение: жим гантелей сидя в день 2, 3×12', 'Замени во втором дне разведения на махи в кроссовере', 'Почему встал жим в кроссовере?', 'Где у меня застой?'];
+  const msg = (m) => {
+    if (m.tmp) return h('div', { class: 'ai' }, h('span', { class: 'typing', 'aria-label': 'Тренер думает' }, h('span'), h('span'), h('span')));
+    if (m.me) return h('div', { class: 'me' }, m.text);
+    const pending = (m.actions || []).filter((a) => !a.status || a.status === 'new' || a.status === 'err');
+    const all = pending.length > 1 ? h('button', { class: 'btn small', style: 'margin-top:8px;width:100%', onclick: (ev) => runActions(m.actions, ev.currentTarget) }, `Применить всё (${pending.length})`) : null;
+    return h('div', { class: 'ai-wrap' }, h('div', { class: 'ai' + (m.err ? ' err' : '') }, m.text), (m.actions || []).map(actionCard), all);
+  };
+  const list = h('div', { class: 'chat' }, S.chat.length ? S.chat.map(msg)
+    : h('div', {}, h('div', { class: 'sub' }, 'Можно спросить про тренировки или попросить изменить программу. Изменения применяются только после вашего подтверждения.'), h('div', { class: 'chips' }, sug.map((t) => h('button', { class: 'sug', onclick: () => send(t) }, t)))));
+  const inp = h('textarea', { class: 'field', rows: 1, style: 'flex:1;min-width:0;resize:none;max-height:120px', placeholder: 'Вопрос или просьба…', 'aria-label': 'Сообщение ИИ-тренеру', enterkeyhint: 'send', maxlength: 1500,
+    oninput: (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(120, e.target.scrollHeight) + 'px'; },
+    onkeydown: (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(inp.value); } } });
   async function send(text) {
     text = String(text).trim(); if (!text || S.busy) return; S.busy = true;
+    const history = S.chat.filter((m) => !m.tmp).slice(-8).map((m) => ({ role: m.me ? 'user' : 'assistant',
+      text: m.me ? m.text : [m.text, ...(m.actions || []).map((a) => `[предложено: ${a.label} — ${a.status === 'done' ? 'применено' : a.status === 'cancel' ? 'отменено' : 'не применено'}]`)].join('\n') }));
     S.chat.push({ me: true, text }); S.chat.push({ tmp: true }); renderKeep();
-    try { const r = await call('ask', { question: text }); S.chat.pop(); S.chat.push(r.ok && r.text ? { text: r.text } : { text: r.error || r.text || 'Тренер не ответил', err: true }); }
-    catch (e) { S.chat.pop(); S.chat.push({ text: e.message, err: true }); }
-    finally { S.busy = false; S.chat = S.chat.slice(-30); ls.set('fit.chat', S.chat.filter((m) => !m.tmp)); renderKeep(); }
+    try {
+      const r = await call('agent', { question: text, history: JSON.stringify(history) });
+      S.chat.pop();
+      S.chat.push(r.ok ? { text: r.text || 'Готово.', actions: (r.actions || []).map((a) => ({ ...a, status: 'new' })) } : { text: r.error || 'Тренер не ответил', err: true });
+    } catch (e) { S.chat.pop(); S.chat.push({ text: e.message, err: true }); }
+    finally { S.busy = false; S.chat = S.chat.slice(-30); saveChat(); renderKeep(); }
   }
   return h('div', { class: 'screen' },
     h('div', { class: 'row' }, h('h1', { style: 'font-size:24px;flex:1' }, 'ИИ-тренер'), S.chat.length ? h('button', { class: 'icon', 'aria-label': 'Очистить чат', onclick: () => confirmBox('Очистить переписку?', () => { S.chat = []; ls.set('fit.chat', []); render(); }) }, icon('trash', 20)) : null),
-    h('div', { class: 'sub' }, 'Отвечает по вашей истории за 8 недель. Веса не назначает: их считает система по кнопкам самочувствия.'),
-    list, h('div', { class: 'dock row gap8' }, inp, h('button', { class: 'btn small', 'aria-label': 'Отправить', disabled: S.busy, onclick: () => send(inp.value) }, icon('send', 20, 2.2))));
+    h('div', { class: 'sub' }, 'Отвечает по вашей истории и меняет программу по просьбе — после вашего «Применить».'),
+    list, h('div', { class: 'dock row gap8', style: 'align-items:flex-end' }, inp, h('button', { class: 'btn small', style: 'height:48px', 'aria-label': 'Отправить', disabled: S.busy, onclick: () => send(inp.value) }, icon('send', 20, 2.2))));
 }
+
 function renderKeep() { render({ after: () => window.scrollTo(0, document.body.scrollHeight) }); }
 
 // ---------- Общие элементы: лист снизу, степпер, правки ----------
@@ -967,9 +1077,20 @@ async function exform() {
   const tech = h('textarea', { class: 'field', rows: 5, maxlength: 3000, placeholder: 'Каждый шаг с новой строки' }); tech.value = e.technique || '';
   const video = h('input', { class: 'field', type: 'url', value: raw && raw.video_url && ytId(raw.video_url) ? raw.video_url : (raw && raw.video_url) || '', maxlength: 500, placeholder: 'https://youtu.be/…' });
   const note = h('textarea', { class: 'field', rows: 2, maxlength: 1000, placeholder: 'Сиденье, хват, настройки' }); note.value = e.note || '';
+  const secSet = new Set(e.secondary || []);
+  const secBox = h('div', { class: 'chips' }, Object.entries(MUSCLE).filter(([k]) => k !== 'glutes').map(([k, v]) => {
+    const cb = h('input', { type: 'checkbox', value: k, checked: secSet.has(k) ? true : null });
+    return h('label', { class: 'chk' }, cb, v);
+  }));
+  const setup = h('textarea', { class: 'field', rows: 2, maxlength: 1500, placeholder: 'Сиденье, высота блока, хват' }); setup.value = e.setup || '';
+  const feelT = h('textarea', { class: 'field', rows: 2, maxlength: 500, placeholder: 'Где должна гореть мышца' }); feelT.value = e.target || '';
+  const cues = h('textarea', { class: 'field', rows: 3, maxlength: 2500, placeholder: 'Каждый секрет с новой строки' }); cues.value = (e.cues || []).join('\n');
+  const mist = h('textarea', { class: 'field', rows: 3, maxlength: 2500, placeholder: 'Каждая ошибка с новой строки' }); mist.value = (e.mistakes || []).join('\n');
   const save = h('button', { class: 'btn', onclick: () => busyBtn(save, async () => {
     const d = await edit('ex_save', { id: S.formId || 0, name: name.value.trim(), muscle: muscle.value, unilateral: uni.checked, step: step.get(),
-      equipment: equip.value, description: desc.value, technique: tech.value, video_url: video.value.trim(), note: note.value });
+      equipment: equip.value, description: desc.value, technique: tech.value, video_url: video.value.trim(), note: note.value,
+      secondary: [...secBox.querySelectorAll('input:checked')].map((x) => x.value).filter((x) => x !== muscle.value).join(','),
+      setup: setup.value, target_feel: feelT.value, cues: cues.value, mistakes: mist.value });
     invalidate('ex', 'prog', 'progress', 'exp'); haptic('success'); toast(S.formId ? 'Упражнение сохранено' : 'Упражнение добавлено', 'ok');
     const newId = Number(d && d.id);
     if (!S.formId && newId) { S.stack.pop(); S.cardId = newId; S.screen = 'card'; S.formId = 0; render({ top: true }); } else back();
@@ -978,7 +1099,8 @@ async function exform() {
     h('div', { class: 'form' },
       field('Название', name), field('Основная мышечная группа', muscle),
       h('label', { class: 'switch' }, uni, h('span', {}, h('b', {}, 'Каждая сторона отдельно (КРО)'), h('small', {}, 'Подходы будут парами: левая, затем правая'))),
-      step.el, field('Оборудование', equip), field('Описание', desc), field('Техника по шагам', tech),
+      field('Помогающие мышцы', secBox), step.el, field('Оборудование', equip), field('Описание', desc), field('Настройка тренажёра', setup),
+      field('Техника по шагам', tech), field('Где должно чувствоваться', feelT), field('Секреты и лайфхаки', cues), field('Частые ошибки', mist),
       field('Видео (ссылка YouTube)', video, 'Ссылку на конкретный ролик покажем прямо в карточке'), field('Моя заметка', note)),
     h('div', { class: 'dock' }, save));
 }
